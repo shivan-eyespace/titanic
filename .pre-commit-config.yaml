@@ -1,0 +1,82 @@
+---
+repos:
+  - hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - args:
+          - --maxkb=3000
+        id: check-added-large-files
+      - id: detect-private-key
+      - id: check-executables-have-shebangs
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: sort-simple-yaml
+      - id: check-yaml
+    repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+  - hooks:
+      - args:
+          - --all
+        id: pycln
+    repo: https://github.com/hadialqattan/pycln
+    rev: v2.1.5
+  - hooks:
+      - args:
+          - -iii
+          - -ll
+        id: bandit
+    repo: https://github.com/pycqa/bandit
+    rev: 1.7.5
+  - hooks:
+      - args:
+          - --line-length=88
+        id: black
+    repo: https://github.com/ambv/black
+    rev: 23.3.0
+  - hooks:
+      - additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-mutable
+          - flake8-print
+          - flake8-simplify
+        id: flake8
+    repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+  - hooks:
+      - id: mypy
+    repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.3.0
+  - hooks:
+      - id: isort
+    repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+  - hooks:
+      - additional_dependencies:
+          - toml
+        id: pydocstyle
+    repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+  - hooks:
+      - args:
+          - --py36-plus
+          - --py37-plus
+          - --py38-plus
+          - --py39-plus
+          - --py310-plus
+          - --py311-plus
+        id: pyupgrade
+    repo: https://github.com/asottile/pyupgrade
+    rev: v3.7.0
+  - hooks:
+      - id: hadolint
+    repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.12.0.2
+  - repo: https://github.com/jazzband/pip-tools
+    rev: 6.13.0
+    hooks:
+      - id: pip-compile
