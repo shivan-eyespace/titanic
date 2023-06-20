@@ -15,4 +15,4 @@ RUN pip-compile -o requirements.txt requirements.in && \
   pip-compile -o dev-requirements.txt dev-requirements.in && \
   pip-sync requirements.txt dev-requirements.txt
 
-RUN steamlit run main.py
+RUN streamlit run ./src/main.py
