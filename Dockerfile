@@ -23,3 +23,5 @@ RUN mkdir -p /root/.streamlit && \
   echo '[general]\nemail = ""' > /root/.streamlit/credentials.toml
 
 ENTRYPOINT ["sh", "-c", "streamlit run main.py --server.port=8501 --server.address=0.0.0.0"]
+
+EXPOSE 8501
