@@ -15,8 +15,9 @@ RUN pip install --no-cache-dir -U pip pip-tools && \
 COPY requirements.in dev-requirements.in /src/
 
 RUN pip-compile -o requirements.txt requirements.in && \
-  pip-compile -o dev-requirements.txt dev-requirements.in && \
-  pip-sync requirements.txt dev-requirements.txt
+  pip-sync requirements.txt
+
+COPY main.py data/ /src/
 
 # hadolint ignore=SC2028
 RUN mkdir -p /root/.streamlit && \
