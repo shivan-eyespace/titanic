@@ -12,7 +12,7 @@ RUN apt-get update \
 RUN pip install --no-cache-dir -U pip pip-tools && \
   pip install --no-cache-dir pip-tools
 
-COPY requirements.in dev-requirements.in /src/
+COPY requirements.in /src/
 
 RUN pip-compile -o requirements.txt requirements.in && \
   pip-sync requirements.txt
