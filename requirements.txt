@@ -58,6 +58,8 @@ jinja2==3.1.2
     # via
     #   altair
     #   pydeck
+joblib==1.2.0
+    # via scikit-learn
 jsonschema==4.17.3
     # via altair
 keras==2.13.1rc0
@@ -83,6 +85,7 @@ numpy==1.24.3
     #   pandas
     #   pyarrow
     #   pydeck
+    #   scikit-learn
     #   scipy
     #   streamlit
     #   tensorboard
@@ -145,8 +148,10 @@ rich==13.4.1
     # via streamlit
 rsa==4.9
     # via google-auth
-scipy==1.10.1
+scikit-learn==1.2.2
     # via -r requirements.in
+scipy==1.10.1
+    # via scikit-learn
 six==1.16.0
     # via
     #   astunparse
@@ -174,6 +179,8 @@ tensorflow-macos==2.13.0-rc1
     # via tensorflow
 termcolor==2.3.0
     # via tensorflow-macos
+threadpoolctl==3.1.0
+    # via scikit-learn
 toml==0.10.2
     # via streamlit
 toolz==0.12.0

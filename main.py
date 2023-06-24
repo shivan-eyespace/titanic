@@ -6,8 +6,10 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from pandas import DataFrame, Series
-
-from utils.correlations import tetrachoric
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from tensorflow import keras
+from tensorflow.keras import layers
 
 SETTINGS = {"THEME": None}
 
@@ -20,60 +22,71 @@ train_df = pd.read_csv(DATA_DIR / "train.csv", index_col="PassengerId")
 """
 # Titanic Dataset
 
-
 Analysing the titanic dataset.
 
 Source: https://www.kaggle.com/c/titanic
-
-## Raw Train Data
 """
 
-st.dataframe(train_df)
+"""## Raw Train Data"""
+st.dataframe(train_df.head(4))
+with st.expander("Expand"):
+    st.dataframe(train_df)
+    st.dataframe(train_df.describe())
 
 """
 ## Data Cleaning
 
 """
-column_counts = train_df.count()
-column_counts_fig = px.bar(
-    column_counts,
-    labels={"value": "count", "index": "column"},
-    title="Column Counts of Titanic Data",
-)
-column_counts_fig.update_layout(showlegend=False)
-st.plotly_chart(column_counts_fig, use_container_width=True)
 
-display_nulls = train_df.notna()
-display_nulls_fig = px.imshow(train_df.notna(), title="Nulls in Titanic Data")
-st.plotly_chart(display_nulls_fig, use_container_width=True)
+
+def _column_counts(df: DataFrame):
+    data = df.count()
+    fig = px.bar(
+        data,
+        labels={"value": "count", "index": "column"},
+        title="Column Counts of Titanic Data",
+    )
+    fig.update_layout(showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _display_nulls(df: DataFrame):
+    data = df.notna()
+    fig = px.imshow(data, title="Nulls in Titanic Data")
+    st.plotly_chart(fig, use_container_width=True)
+
+
+column_counts, display_nulls = st.tabs(["Column Counts", "Nulls in Data"])
+with column_counts:
+    _column_counts(train_df)
+with display_nulls:
+    _display_nulls(train_df)
+
 
 """
 1. Drop column:
-    - `Cabin` due to low count
+    - `Cabin` due to low count.
     - `Name` because not relevant, can identify by `PassengerId`.
+    - `Ticket` is likely not relevant.
 2. Removed any nulls on a row.
+"""
+cleaned_train_df = train_df.drop(["Cabin", "Name", "Ticket"], axis=1).dropna(
+    how="any", axis=0
+)
+st.dataframe(cleaned_train_df.head())
 
-Cleaned Data:
-"""
-cleaned_train_df = train_df.drop(["Cabin", "Name"], axis=1).dropna(how="any", axis=0)
-st.dataframe(cleaned_train_df)
-
-"""
-3. Types
-"""
-st.dataframe(cleaned_train_df.dtypes)
+with st.expander("Expand"):
+    st.text("All data")
+    st.dataframe(cleaned_train_df)
+    st.text("Types")
+    st.dataframe(cleaned_train_df.dtypes)
 
 f"""
 Passengers: `{len(cleaned_train_df)}`
 """
 
 """
-"""
-
-"""
 ### Exploratory Data Analysis
-
-#### Data distributions
 """
 
 
@@ -176,27 +189,97 @@ def _embarked(df: DataFrame):
     determine_proportion(df=data, title="Embarked Survivability")
 
 
-_survived(cleaned_train_df)
-_pclass(cleaned_train_df)
-_sex(cleaned_train_df)
-_age(cleaned_train_df)
-_sibsp(cleaned_train_df)
-_parch(cleaned_train_df)
-_fare(cleaned_train_df)
-_embarked(cleaned_train_df)
+survived, pclass, sex, age, sibsp, parch, fare, embarked = st.tabs(
+    ["Surived", "Pclass", "Sex", "Age", "Sibsp", "Parch", "Fare", "Embarked"]
+)
+with survived:
+    _survived(cleaned_train_df)
+with pclass:
+    _pclass(cleaned_train_df)
+with sex:
+    _sex(cleaned_train_df)
+with age:
+    _age(cleaned_train_df)
+with sibsp:
+    _sibsp(cleaned_train_df)
+with parch:
+    _parch(cleaned_train_df)
+with fare:
+    _fare(cleaned_train_df)
+with embarked:
+    _embarked(cleaned_train_df)
 
 """
-#### Correlations
+## Encoding and Further cleaning
 """
 
+"""
+1. Seperate input from results.
+2. Turn `Sex` column into `Is_Female` and drop `Sex`.
+3. Make dummy variables from `Embarked` and drop `Embarked`.
+4. Normalise `Age`
+5. Normalise `Fare`
+"""
 
-def _sex_correlation(df: DataFrame):
-    ds = cleaned_train_df["Sex"]
-    data = split_data(df, ds)
-    correlation = abs(tetrachoric(data.values))
-    st.dataframe(data)
-    return correlation
+x_tab, y_tab = st.tabs(["Input", "Results"])
 
 
-def _pclass_correlation():
-    pass
+with x_tab:
+    x_train = cleaned_train_df.drop("Survived", axis=1)
+    x_train["Female"] = x_train.apply(
+        lambda x: 1 if x["Sex"] == "female" else 0, axis=1
+    )
+    x_train.drop("Sex", axis=1, inplace=True)
+    embarked_encoding = pd.get_dummies(
+        x_train["Embarked"], prefix="Embarked", dtype=int
+    )
+    x_train = x_train.join(embarked_encoding)
+    x_train.drop("Embarked", axis=1, inplace=True)
+    scaler = StandardScaler()
+    scaled = pd.DataFrame(
+        scaler.fit_transform(x_train[["Age", "Fare"]].to_numpy()),
+        columns=["Age", "Fare"],
+    )
+    x_train.drop(columns=["Age", "Fare"], axis=1, inplace=True)
+    x_train = x_train.join(scaled)
+    st.dataframe(x_train)
+
+with y_tab:
+    y_train = cleaned_train_df["Survived"]
+    st.dataframe(y_train)
+
+
+# skf = StratifiedKFold(n_splits=5, random_state=42, shuffle=True)
+# for i, (train_index, val_index) in enumerate(skf.split(x_train, y_train)):
+# X = x_train.iloc[train_index]
+# Y = y_train.iloc[train_index]
+
+# X_val = x_train.iloc[val_index]
+# Y_val = y_train.iloc[val_index]
+
+epochs = 2
+
+X, X_val, Y, Y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
+
+# print(f"{X.shape}")
+# print(f"{X.shape[1]}")
+
+model = keras.Sequential(
+    [
+        layers.Dense(16, input_dim=X.shape[1], activation="relu"),
+        layers.Dense(16, activation="relu"),
+        layers.Dense(1, activation="sigmoid"),
+    ]
+)
+model.compile(optimizer="rmsprop", loss="binary_crossentropy", metrics=["accuracy"])
+
+if st.button("Train model"):
+    history = model.fit(
+        X, Y, epochs=epochs, batch_size=64, validation_data=(X_val, Y_val)
+    )
+    history_dict = history.history
+    st.text(history_dict)
+    fig = px.scatter(x=history_dict["loss"], y=history_dict["val_loss"])
+    st.plotly_chart(fig, use_container_width=True)
+
+    # FIXME : keep getting nan

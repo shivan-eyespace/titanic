@@ -7,8 +7,18 @@ Dataset is [sourced from Kaggle](https://www.kaggle.com/c/titanic).
 ## Requirements
 
 - Python
+- Docker
+- Docker compose
 
 ## How to Run
+
+### Docker
+
+```sh
+docker-compose up --build
+```
+
+### Python
 
 I suggest creating a virtual environment and then installing packages through this.
 
