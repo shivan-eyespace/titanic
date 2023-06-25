@@ -17,7 +17,7 @@ COPY requirements.in /src/
 RUN pip-compile -o requirements.txt requirements.in && \
   pip-sync requirements.txt
 
-COPY main.py data/ /src/
+COPY main.py data /src/
 
 # hadolint ignore=SC2028
 RUN mkdir -p /root/.streamlit && \
