@@ -44,8 +44,9 @@ google-auth-oauthlib==1.0.0
     # via tensorboard
 google-pasta==0.2.0
     # via tensorflow-macos
-grpcio==1.54.2
+grpcio==1.49.1
     # via
+    #   scikeras
     #   tensorboard
     #   tensorflow-macos
 h5py==3.8.0
@@ -97,6 +98,7 @@ opt-einsum==3.3.0
 packaging==23.1
     # via
     #   plotly
+    #   scikeras
     #   streamlit
     #   tensorflow-macos
 pandas==2.0.2
@@ -148,8 +150,12 @@ rich==13.4.1
     # via streamlit
 rsa==4.9
     # via google-auth
-scikit-learn==1.2.2
+scikeras==0.11.0
     # via -r requirements.in
+scikit-learn==1.2.2
+    # via
+    #   -r requirements.in
+    #   scikeras
 scipy==1.10.1
     # via scikit-learn
 six==1.16.0
@@ -157,6 +163,7 @@ six==1.16.0
     #   astunparse
     #   google-auth
     #   google-pasta
+    #   grpcio
     #   python-dateutil
     #   tensorflow-macos
 smmap==5.0.0

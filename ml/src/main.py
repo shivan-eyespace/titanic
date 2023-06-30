@@ -1,19 +1,21 @@
 """Main file."""
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from pandas import DataFrame, Series
-from sklearn.model_selection import train_test_split
+from scikeras.wrappers import KerasClassifier
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from tensorflow import keras
 from tensorflow.keras import layers
 
 SETTINGS = {"THEME": None}
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
 
 test_df = pd.read_csv(DATA_DIR / "test.csv", index_col="PassengerId")
@@ -69,10 +71,20 @@ with display_nulls:
     - `Name` because not relevant, can identify by `PassengerId`.
     - `Ticket` is likely not relevant.
 2. Removed any nulls on a row.
+3. Reset index and drop the passengerId.
+4. Apply same changes to the test data.
 """
-cleaned_train_df = train_df.drop(["Cabin", "Name", "Ticket"], axis=1).dropna(
-    how="any", axis=0
-)
+
+
+def cleaning(df: DataFrame) -> DataFrame:
+    """Clean up data."""
+    columns_to_drop = ["Cabin", "Name", "Ticket"]
+    df.drop(columns_to_drop, axis=1, inplace=True)
+    df.dropna(how="any", axis=0, inplace=True)
+    return df
+
+
+cleaned_train_df = cleaning(train_df)
 st.dataframe(cleaned_train_df.head())
 
 with st.expander("Expand"):
@@ -81,8 +93,10 @@ with st.expander("Expand"):
     st.text("Types")
     st.dataframe(cleaned_train_df.dtypes)
 
+cleaned_test_df = cleaning(test_df)
+
 f"""
-Passengers: `{len(cleaned_train_df)}`
+Passengers in train data: `{len(cleaned_train_df)}`
 """
 
 """
@@ -214,72 +228,93 @@ with embarked:
 """
 
 """
-1. Seperate input from results.
+1. Separate input from results.
 2. Turn `Sex` column into `Is_Female` and drop `Sex`.
 3. Make dummy variables from `Embarked` and drop `Embarked`.
-4. Normalise `Age`
-5. Normalise `Fare`
+4. Normalise `Age`.
+5. Normalise `Fare`.
+6. Apply this to the test data.
 """
 
 x_tab, y_tab = st.tabs(["Input", "Results"])
 
 
-with x_tab:
-    x_train = cleaned_train_df.drop("Survived", axis=1)
-    x_train["Female"] = x_train.apply(
-        lambda x: 1 if x["Sex"] == "female" else 0, axis=1
-    )
-    x_train.drop("Sex", axis=1, inplace=True)
-    embarked_encoding = pd.get_dummies(
-        x_train["Embarked"], prefix="Embarked", dtype=int
-    )
-    x_train = x_train.join(embarked_encoding)
-    x_train.drop("Embarked", axis=1, inplace=True)
+Transformer = Any | None
+
+
+def encoding(
+    df: DataFrame, transformer: Transformer = None
+) -> tuple[DataFrame, Transformer]:
+    """Encode data."""
+    df["Female"] = df.apply(lambda x: 1 if x["Sex"] == "female" else 0, axis=1)
+    embarked_encoding = pd.get_dummies(df["Embarked"], prefix="Embarked", dtype=int)
+    df = df.join(embarked_encoding)
     scaler = StandardScaler()
+    if transformer is None:
+        transformer = scaler.fit(df[["Age", "Fare"]].to_numpy())
     scaled = pd.DataFrame(
-        scaler.fit_transform(x_train[["Age", "Fare"]].to_numpy()),
+        transformer.transform(df[["Age", "Fare"]].to_numpy()),
         columns=["Age", "Fare"],
+        index=df.index,
     )
-    x_train.drop(columns=["Age", "Fare"], axis=1, inplace=True)
-    x_train = x_train.join(scaled)
+    df.drop(["Sex", "Embarked", "Age", "Fare"], axis=1, inplace=True)
+    df = df.join(scaled)
+    return df, transformer
+
+
+y_train = cleaned_train_df["Survived"]
+x_train_before_encoding = cleaned_train_df.drop("Survived", axis=1)
+x_train, transformer = encoding(x_train_before_encoding)
+x_test, _ = encoding(cleaned_test_df, transformer)
+
+with x_tab:
     st.dataframe(x_train)
 
 with y_tab:
-    y_train = cleaned_train_df["Survived"]
     st.dataframe(y_train)
 
 
-# skf = StratifiedKFold(n_splits=5, random_state=42, shuffle=True)
-# for i, (train_index, val_index) in enumerate(skf.split(x_train, y_train)):
-# X = x_train.iloc[train_index]
-# Y = y_train.iloc[train_index]
+epochs = range(1, 10, 5)
+f"""
+## Create model and run predictions
 
-# X_val = x_train.iloc[val_index]
-# Y_val = y_train.iloc[val_index]
+1. Create model.
+2. Grid Search to fine-tune on `epochs = {list(epochs)}`.
+"""
 
-epochs = 2
 
-X, X_val, Y, Y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
+def create_model():
+    """Create model."""
+    model = keras.Sequential(
+        [
+            layers.Dense(32, activation="relu"),
+            layers.Dense(64, activation="relu"),
+            layers.Dense(1, activation="sigmoid"),
+        ]
+    )
+    model.compile(optimizer="rmsprop", loss="binary_crossentropy", metrics=["accuracy"])
+    return model
 
-# print(f"{X.shape}")
-# print(f"{X.shape[1]}")
 
-model = keras.Sequential(
-    [
-        layers.Dense(16, input_dim=X.shape[1], activation="relu"),
-        layers.Dense(16, activation="relu"),
-        layers.Dense(1, activation="sigmoid"),
-    ]
+model = KerasClassifier(build_fn=create_model)
+cv = StratifiedKFold(n_splits=5, random_state=42, shuffle=True)
+param_grid = dict(epochs=epochs)
+clf = GridSearchCV(
+    estimator=model,
+    param_grid=param_grid,
+    n_jobs=-1,
+    cv=cv,
 )
-model.compile(optimizer="rmsprop", loss="binary_crossentropy", metrics=["accuracy"])
 
 if st.button("Train model"):
-    history = model.fit(
-        X, Y, epochs=epochs, batch_size=64, validation_data=(X_val, Y_val)
-    )
-    history_dict = history.history
-    st.text(history_dict)
-    fig = px.scatter(x=history_dict["loss"], y=history_dict["val_loss"])
-    st.plotly_chart(fig, use_container_width=True)
+    model.fit(X=x_train, y=y_train)
+    clf.fit(x_train, y_train)
+    st.dataframe(clf.cv_results_)
 
-    # FIXME : keep getting nan
+"""
+## Prediction
+"""
+# y_preds = model.predict(x_train)
+# st.dataframe(
+#     pd.DataFrame(y_preds, columns=["Survived"], index=x_train.index)
+# )

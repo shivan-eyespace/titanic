@@ -1,17 +1,42 @@
 ---
-version: "3.7"
+version: "3.8"
 
 name: titanic
 
 services:
-  app:
+  ml:
     build:
-      context: .
+      context: ./ml
       dockerfile: .docker/dev/Dockerfile
+    container_name: titanic_ml
     env_file:
       - .env
-    container_name: titanic_app
-    volumes:
-      - .:/src
     ports:
-      - 8501:${APP_PORT:-8501}
+      - 8501:${ML_PORT:-8501}
+    volumes:
+      - ./ml:/src
+  api:
+    build:
+      context: ./api
+      dockerfile: .docker/dev/Dockerfile
+    container_name: titanic_api
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - 8000:${API_PORT:-8000}
+    volumes:
+      - ./api:/src
+  db:
+    container_name: titanic_db
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    image: postgres:15
+    env_file:
+      - .env

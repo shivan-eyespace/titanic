@@ -8,14 +8,26 @@ Dataset is [sourced from Kaggle](https://www.kaggle.com/c/titanic).
 
 - Python
 - Docker
-- Docker compose
+- Docker Compose
 
-## How to Run
+## How to Run for Development
 
 ### Docker
 
+Using Docker Compose:
+
 ```sh
 docker-compose up --build
+```
+
+Just using Docker (WIP):
+```sh
+docker build
+  -t titanic_app .
+  -f .docker/dev/Dockerfile
+docker run titanic_app
+  -p 8501:8501
+  -v .:/src
 ```
 
 ### Python
