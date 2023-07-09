@@ -37,3 +37,4 @@ services:
         description: everywhere
 databases:
   - name: db
+    plan: free
