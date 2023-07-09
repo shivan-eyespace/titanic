@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir -U pip pip-tools && \
 
 COPY requirements.in dev-requirements.in /src/
 
-RUN pip-compile -o requirements.txt requirements.in && \
-  pip-compile -o dev-requirements.txt dev-requirements.in && \
+RUN pip-compile -o requirements.txt requirements.in --resolver=backtracking && \
+  pip-compile -o dev-requirements.txt dev-requirements.in --resolver=backtracking && \
   pip-sync requirements.txt dev-requirements.txt
 
 # hadolint ignore=SC2028

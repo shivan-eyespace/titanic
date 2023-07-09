@@ -1,14 +1,17 @@
 """Main file."""
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from numpy import ndarray
 from pandas import DataFrame, Series
 from scikeras.wrappers import KerasClassifier
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import (GridSearchCV, StratifiedKFold,
+                                     train_test_split)
 from sklearn.preprocessing import StandardScaler
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -124,7 +127,9 @@ def split_data(df: DataFrame, ds: Series) -> DataFrame:
 
 def _survived(df: DataFrame) -> None:
     data = (
-        df["Survived"].apply(lambda x: {1: "Survived", 0: "Deceased"}[x]).value_counts()
+        df["Survived"]
+        .apply(lambda x: {1: "Survived", 0: "Deceased"}[x])
+        .value_counts()
     )
     fig = px.bar(data, title="Survived Totals")
     fig.update_layout(showlegend=False)
@@ -247,7 +252,9 @@ def encoding(
 ) -> tuple[DataFrame, Transformer]:
     """Encode data."""
     df["Female"] = df.apply(lambda x: 1 if x["Sex"] == "female" else 0, axis=1)
-    embarked_encoding = pd.get_dummies(df["Embarked"], prefix="Embarked", dtype=int)
+    embarked_encoding = pd.get_dummies(
+        df["Embarked"], prefix="Embarked", dtype=int
+    )
     df = df.join(embarked_encoding)
     scaler = StandardScaler()
     if transformer is None:
@@ -273,48 +280,149 @@ with x_tab:
 with y_tab:
     st.dataframe(y_train)
 
-
-epochs = range(1, 10, 5)
-f"""
+"""
 ## Create model and run predictions
-
-1. Create model.
-2. Grid Search to fine-tune on `epochs = {list(epochs)}`.
 """
 
-
-def create_model():
-    """Create model."""
-    model = keras.Sequential(
-        [
-            layers.Dense(32, activation="relu"),
-            layers.Dense(64, activation="relu"),
-            layers.Dense(1, activation="sigmoid"),
-        ]
-    )
-    model.compile(optimizer="rmsprop", loss="binary_crossentropy", metrics=["accuracy"])
-    return model
+simple_tab, grid_search_tab = st.tabs(["Simple", "Grid Search"])
 
 
-model = KerasClassifier(build_fn=create_model)
-cv = StratifiedKFold(n_splits=5, random_state=42, shuffle=True)
-param_grid = dict(epochs=epochs)
-clf = GridSearchCV(
-    estimator=model,
-    param_grid=param_grid,
-    n_jobs=-1,
-    cv=cv,
+shape = (None, 9)
+model_layers = keras.Sequential(
+    [
+        layers.Input(shape=shape),
+        layers.Dense(128, activation="relu"),
+        layers.Dense(128, activation="relu"),
+        layers.Dense(128, activation="relu"),
+        layers.Dense(128, activation="relu"),
+        layers.Dense(128, activation="relu"),
+        layers.Dense(1, activation="sigmoid"),
+    ]
 )
 
-if st.button("Train model"):
-    model.fit(X=x_train, y=y_train)
-    clf.fit(x_train, y_train)
-    st.dataframe(clf.cv_results_)
 
-"""
-## Prediction
-"""
-# y_preds = model.predict(x_train)
-# st.dataframe(
-#     pd.DataFrame(y_preds, columns=["Survived"], index=x_train.index)
-# )
+def predict(y_preds: ndarray, y_proba: ndarray):
+    """Predict against test set."""
+    """
+    ## Prediction
+    """
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Probability": y_proba.flatten(),
+                "Prediction": y_preds.flatten(),
+            },
+            index=x_train.index,
+        ),
+        use_container_width=True,
+    )
+
+
+def _simple_train():
+    X, X_val, Y, Y_val = train_test_split(
+        x_train, y_train, test_size=0.2, random_state=42
+    )
+    epochs = st.number_input("Epochs", min_value=2, max_value=1000, step=1)
+    optimizer = st.selectbox("Optimizer", options=["rmsprop", "adam"])
+    model = model_layers
+    model.compile(
+        optimizer=optimizer, loss="binary_crossentropy", metrics=["accuracy"]
+    )
+    if st.button("Train model", key="train-model-simple"):
+        history = model.fit(
+            X,
+            Y,
+            epochs=int(epochs),
+            validation_data=(X_val, Y_val),
+        )
+        history_dict = history.history
+        history_dict["epochs"] = range(int(epochs))
+        history_df = pd.DataFrame(history_dict)
+
+        def _loss():
+            fig = px.scatter(
+                history_df, x="epochs", y=["loss", "val_loss"], title="Loss"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        def _accuracy():
+            fig = px.scatter(
+                history_df,
+                x="epochs",
+                y=["val_accuracy", "accuracy"],
+                title="Accuracy",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        _loss()
+        _accuracy()
+
+        y_proba = model.predict(x_train)
+        y_preds = (model.predict(x_train) > 0.5).astype("int32")
+        predict(y_preds=y_preds, y_proba=y_proba)
+        model.save("nn")
+
+
+def _grid_seach_train(epochs: Iterable[int], optimizers: Iterable[str]):
+    def create_model():
+        """Create model."""
+        model = model_layers
+        model.compile(loss="binary_crossentropy", metrics=["accuracy"])
+        return model
+
+    model = KerasClassifier(model=create_model)
+    cv = StratifiedKFold(n_splits=5, random_state=42, shuffle=True)
+    param_grid = {"epochs": epochs, "optimizer": optimizers}
+    clf = GridSearchCV(
+        estimator=model,
+        param_grid=param_grid,
+        n_jobs=-1,
+        cv=cv,
+    )
+
+    if st.button("Train model", key="train-model-grid"):
+        clf.fit(x_train, y_train)
+        results = pd.DataFrame(clf.cv_results_)
+
+        def _cv(df):
+            fig = px.scatter(
+                df,
+                x="param_epochs",
+                y="mean_test_score",
+                color="param_optimizer",
+                error_y="std_test_score",
+                labels={
+                    "rank_test_score": "rank",
+                    "params": "params",
+                },
+                title="Grid Search Results",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        _cv(df=results)
+        st.dataframe(
+            results.style.highlight_min("rank_test_score"),
+            use_container_width=True,
+        )
+
+        y_proba = clf.predict_proba(x_train).round(2)
+        y_preds = clf.predict(x_train)
+        predict(y_preds=y_preds, y_proba=y_proba[:, [1]])
+        clf.best_estimator_.model().save("nn")
+
+
+with simple_tab:
+    _simple_train()
+
+
+with grid_search_tab:
+    epochs = [1] + list(range(0, 5, 5))[1:]
+    # optimizers = ["rmsprop", "adam"]
+    optimizers = ["rmsprop"]
+    f"""
+    1. Create model.
+    2. Grid Search on:
+        - `epochs = {list(epochs)}`
+        - `optimizers = {list(optimizers)}`
+    """
+    _grid_seach_train(epochs, optimizers)

@@ -1,10 +1,14 @@
 """API Service."""
 
 from fastapi import FastAPI
+from src import __version__
+from src.routers import v1
 
-from . import __version__
+description = """
+Titanic dataset analysis.
+"""
 
-app = FastAPI()
+app = FastAPI(title="titanic")
 
 
 @app.get("/")
@@ -17,3 +21,7 @@ async def root():
 async def healthz():
     """Health check endpoint."""
     return {"version": __version__}
+
+
+# routes
+app.include_router(v1.router)

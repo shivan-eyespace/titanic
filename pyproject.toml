@@ -1,10 +1,6 @@
-[tool.black]
+[tool.ruff]
 line-length = 79
-include = '.pyi?%'
-
+select = ["E", "F", "C", "UP", "D", "B", "C4", "T20", "SIM"]
 [tool.mypy]
 mypy_path = "."
 ignore_missing_imports = true
-
-[tool.pydocstyle]
-match = '.*\.py'

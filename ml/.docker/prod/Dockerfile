@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -U pip pip-tools && \
 
 COPY requirements.in /src/
 
-RUN pip-compile -o requirements.txt requirements.in && \
+RUN pip-compile -o requirements.txt requirements.in --resolver=backtracking && \
   pip-sync requirements.txt
 
 COPY main.py data /src/

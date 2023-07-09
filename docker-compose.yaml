@@ -31,12 +31,37 @@ services:
       - ./api:/src
   db:
     container_name: titanic_db
-    healthcheck:
-      test: ["CMD", "pg_isready"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    image: postgres:15
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", $POSTGRES_USER]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    image: postgres:15
+    volumes:
+      - pgdata:/var/lib/postgres/data/
+  migrate:
+    command: |
+      --wait up
+    container_name: titanic_migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    image: amacneil/dbmate:2
+    volumes:
+      - ./db:/db
+  cache:
+    container_name: titanic_cache
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    image: redis:7
+
+volumes:
+  pgdata:
+    driver: local

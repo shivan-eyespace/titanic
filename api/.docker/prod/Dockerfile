@@ -5,7 +5,9 @@ ENV PYTHONNUNBUFFERED 1
 
 WORKDIR /src
 
+# hadolint ignore=DL3008
 RUN apt-get update \
+  && apt-get -y --no-install-recommends install libpq-dev gcc \
   && rm -rf /var/lib/apt/lists/*
 
 # hadolint ignore=DL3013
@@ -14,7 +16,7 @@ RUN pip install --no-cache-dir -U pip pip-tools && \
 
 COPY requirements.in /src/
 
-RUN pip-compile -o requirements.txt requirements.in && \
+RUN pip-compile -o requirements.txt requirements.in --resolver=backtracking && \
   pip-sync requirements.txt
 
 COPY src/ data/ /src/
