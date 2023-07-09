@@ -27,7 +27,7 @@ share/python-wheels/
 MANIFEST
 
 # ruff
-.ruff-cache/
+.ruff_cache/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
