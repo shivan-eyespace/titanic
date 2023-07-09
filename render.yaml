@@ -32,7 +32,7 @@ services:
   - type: redis
     name: cache
     plan: free
-    idAllowList:
+    ipAllowList:
       - source: 0.0.0.0/0
         description: everywhere
 databases:
