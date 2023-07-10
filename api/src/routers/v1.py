@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from src.db import crud, get_db, schemas
+from src.nn import nn
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -46,7 +47,8 @@ async def delete_passenger(
     crud.delete_passenger(db=db, passenger_id=passenger_id)
 
 
-@router.get("/predict")
-async def predict(passenger: schemas.Passenger):
+@router.post("/predict")
+async def predict(passenger: schemas.CreatePassenger):
     """Predict passenger survival."""
-    return 1
+    predicition = nn.predict(passenger)
+    return predicition

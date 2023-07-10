@@ -1,6 +1,8 @@
 [tool.ruff]
 line-length = 79
 select = ["E", "F", "C", "UP", "D", "B", "C4", "T20", "SIM"]
+[tool.ruff.pydocstyle]
+convention = "google"
 [tool.mypy]
 mypy_path = "."
 ignore_missing_imports = true

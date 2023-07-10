@@ -3,6 +3,8 @@
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+import zipfile
+from io import BytesIO
 
 import pandas as pd
 import plotly.express as px
@@ -20,6 +22,8 @@ SETTINGS = {"THEME": None}
 
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
+MODEL_FILENAME = "nn"
+MODEL_DIR = BASE_DIR / MODEL_FILENAME
 
 test_df = pd.read_csv(DATA_DIR / "test.csv", index_col="PassengerId")
 train_df = pd.read_csv(DATA_DIR / "train.csv", index_col="PassengerId")
@@ -317,6 +321,20 @@ def predict(y_preds: ndarray, y_proba: ndarray):
         use_container_width=True,
     )
 
+def save_model(model):
+    """Save and download the model."""
+    zip_buf = BytesIO()
+    model.save(MODEL_DIR)
+    with zipfile.ZipFile(zip_buf, "x") as zf:
+        for p in MODEL_DIR.glob(r"**/*"):
+            zf.write(p)
+    st.download_button(
+            label="Download model",
+            data=zip_buf,
+            file_name=f"{MODEL_FILENAME}.zip",
+            mime="application/zip"
+            )
+
 
 def _simple_train():
     X, X_val, Y, Y_val = train_test_split(
@@ -360,8 +378,7 @@ def _simple_train():
         y_proba = model.predict(x_train)
         y_preds = (model.predict(x_train) > 0.5).astype("int32")
         predict(y_preds=y_preds, y_proba=y_proba)
-        model.save("nn")
-
+        save_model(model)
 
 def _grid_seach_train(epochs: Iterable[int], optimizers: Iterable[str]):
     def create_model():
@@ -408,7 +425,7 @@ def _grid_seach_train(epochs: Iterable[int], optimizers: Iterable[str]):
         y_proba = clf.predict_proba(x_train).round(2)
         y_preds = clf.predict(x_train)
         predict(y_preds=y_preds, y_proba=y_proba[:, [1]])
-        clf.best_estimator_.model().save("nn")
+        save_model(clf.best_estimator_.model())
 
 
 with simple_tab:
@@ -416,9 +433,9 @@ with simple_tab:
 
 
 with grid_search_tab:
-    epochs = [1] + list(range(0, 5, 5))[1:]
-    # optimizers = ["rmsprop", "adam"]
-    optimizers = ["rmsprop"]
+    END = 40
+    epochs = [1] + list(range(0, END + 1, 5))[1:]
+    optimizers = ["rmsprop", "adam"]
     f"""
     1. Create model.
     2. Grid Search on:

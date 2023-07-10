@@ -31,4 +31,4 @@ class Passenger(BasePassenger):
     class Config:
         """Configuration for Passenger model."""
 
-        orm_mode = True
+        from_attributes = True
