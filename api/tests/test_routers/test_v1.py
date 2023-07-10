@@ -54,3 +54,11 @@ class TestV1:
             f"{self.url}/passengers/{mocked_passenger.id}"
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    @pytest.mark.anyio
+    def test_predict(self, client, mocked_passenger):
+        """Should predict."""
+        response = client.post(
+            f"{self.url}/predict", data=mocked_passenger.dict()
+        )
+        assert response.status_code == status.HTTP_200_OK

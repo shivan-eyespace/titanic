@@ -3,7 +3,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONNUNBUFFERED 1
 
-WORKDIR /src
+WORKDIR /code
 
 # hadolint ignore=DL3008
 RUN apt-get update \
@@ -14,13 +14,14 @@ RUN apt-get update \
 RUN pip install --no-cache-dir -U pip pip-tools && \
   pip install --no-cache-dir pip-tools
 
-COPY requirements.in /src/
+COPY requirements.in /code/
 
 RUN pip-compile -o requirements.txt requirements.in --resolver=backtracking && \
   pip-sync requirements.txt
 
-COPY src/ data/ /src/
+COPY src/ /code/src/
+COPY data/ /code/data/
 
-ENTRYPOINT ["sh", "-c", "uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"]
+ENTRYPOINT ["sh", "-c", "uvicorn src.main:app --proxy-headers --host 0.0.0.0 --port 80"]
 
-EXPOSE 8000
+EXPOSE 80

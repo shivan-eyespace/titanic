@@ -25,10 +25,9 @@ repos:
     repo: https://github.com/hadialqattan/pycln
     rev: v2.1.5
   - hooks:
-      - args: [--fix, --exit-non-zero-on-fix]
-        id: ruff
-    rev: v0.0.277
-    repo: https://github.com/astral-sh/ruff-pre-commit
+      - id: black
+    rev: 23.3.0
+    repo: https://github.com/ambv/black
   - hooks:
       - args:
           - -iii
@@ -55,6 +54,11 @@ repos:
       - id: hadolint
     repo: https://github.com/AleksaC/hadolint-py
     rev: v2.12.0.2
+  - hooks:
+      - args: [--fix, --exit-non-zero-on-fix]
+        id: ruff
+    rev: v0.0.277
+    repo: https://github.com/astral-sh/ruff-pre-commit
   - repo: https://github.com/jazzband/pip-tools
     rev: 6.14.0
     hooks:
